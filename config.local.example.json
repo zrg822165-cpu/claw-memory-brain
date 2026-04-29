@@ -1,0 +1,7 @@
+{
+    "cloud_llm_api_key": "YOUR_REAL_CLOUD_LLM_API_KEY",
+    "cloud_llm_fallback_api_key": "YOUR_REAL_FALLBACK_LLM_API_KEY",
+    "cloud_llm_alt_api_key": "YOUR_REAL_ALT_LLM_API_KEY",
+    "embedding_api_key": "YOUR_REAL_EMBEDDING_API_KEY",
+    "rerank_api_key": ""
+}

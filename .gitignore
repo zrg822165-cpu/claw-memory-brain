@@ -1,0 +1,17 @@
+.env
+.config.local
+.config.local.json
+config.local.json
+.venv-wsl/
+__pycache__/
+*.pyc
+
+# Generated indexes and compiled data
+data/
+
+# Temporary experiments and runtime artifacts
+.ai-tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

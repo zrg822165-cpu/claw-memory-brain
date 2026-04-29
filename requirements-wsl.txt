@@ -1,0 +1,4 @@
+apsw>=3.53.0.0
+lancedb>=0.8.2
+pyarrow>=15.0.0
+requests>=2.32.3
