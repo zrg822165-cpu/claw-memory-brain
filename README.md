@@ -1,190 +1,127 @@
 # claw-memory-brain
 
-An experimental long-term memory and high-confidence retrieval system for AI coding workflows.
+Paused research prototype for direct-answer-aware memory retrieval in AI coding workflows.
 
-This project is built around a practical question: after an AI assistant retrieves something relevant from project memory, how do you decide whether the result is good enough for a direct answer, or whether it is still just a noisy background chunk?
+This repository is an experimental codebase, not an actively maintained product. It is published mainly as a reference snapshot of the design, routing ideas, and implementation direction.
 
-`claw-memory-brain` is an attempt to turn that into an end-to-end pipeline: memory compilation, candidate retrieval, reranking, and final High/Miss style routing.
+## What This Repo Is
 
-## What It Tries To Solve
+`claw-memory-brain` explores a narrow but practical problem in memory-augmented assistants:
 
-Typical coding assistants have two recurring problems:
+- retrieval may find the right topic
+- but the returned chunk may still be too noisy for a direct answer
 
-- they lose working memory across sessions
-- even when retrieval finds the right topic, the returned chunk may still be too noisy to answer directly
+The project tries to separate those two questions.
 
-This repo focuses on the second problem as much as the first. It does not only store and search memories. It also tries to decide whether a retrieved chunk is actually a direct-answer chunk.
+Instead of stopping at "did retrieval hit something relevant", it also asks:
 
-## Core Flow
+- should this chunk be admitted as a direct answer candidate?
+- or should the system honestly refuse High-confidence answering?
 
-The current pipeline is roughly:
+## Current Status
 
-1. Write project memory as markdown under `memory/`
-2. Compile markdown into canonical event chunks
-3. Store chunks in SQLite and rebuild High-search indexes
-4. Retrieve candidates with vector search, FTS, or hybrid search
-5. Rerank candidates with a cloud reranker
+- paused for now
+- useful as a reference implementation or experiment skeleton
+- not packaged as a polished library or service
+- setup is still opinionated and WSL-first
+
+If you are browsing this repo, the best expectation is: read the ideas, inspect the code, and adapt parts of it if useful.
+
+## Core Idea
+
+The rough pipeline is:
+
+1. Write memory notes as markdown
+2. Compile notes into canonical chunks
+3. Store chunks and rebuild retrieval indexes
+4. Retrieve with vector / FTS / hybrid search
+5. Rerank candidates
 6. Route the result:
-   - `high`: the chunk body is judged direct enough to answer
-   - `miss`: relevant topic exists, but current chunk quality is not good enough for direct answer
+   - `high`: current chunk is direct enough to support an answer
+   - `miss`: topic may be relevant, but the chunk is still too noisy
 
-There is also an optional window-admission layer in the codebase, but it is currently disabled by default in config.
+There is also window-admission logic in the codebase, but this public snapshot should be read primarily as a retrieval-and-routing prototype.
 
-## Main Components
+## Why It May Still Be Interesting
 
-- `compile.py`
-  Compiles one markdown file or a whole directory into canonical chunks, runs ingest adjudication, and rebuilds High indexes.
+Even in its current paused state, the repo may be useful if you care about:
 
-- `consume.py`
-  Query entrypoint for retrieval and routing. Supports `vector`, `fts`, and `hybrid` backends, plus rerank and JSON output.
+- memory compilation from messy markdown notes
+- separating retrieval quality from answer-admission quality
+- rerank-based direct-answer gating
+- rejecting noisy chunks instead of over-answering
 
-- `memory_service.py`
-  Small resident service loop for pending-delete review tasks.
+## Repository Surface
 
-- `compile_modules/`
-  Internal modules for chunking, filtering, storage, indexing, reranking, routing, window admission, and adjudication.
-
-## Repository Layout
-
-- `memory/`: source markdown memories
-- `data/`: compiled runtime data and indexes
-- `compile_modules/`: main implementation modules
+- `compile.py`: compile markdown into canonical chunks and rebuild indexes
+- `consume.py`: query entrypoint for retrieval and routing experiments
+- `memory_service.py`: small service loop around pending-delete review tasks
+- `compile_modules/`: chunking, filtering, indexing, reranking, routing, adjudication
 - `config.json`: public-safe base configuration template
-- `config.local.json`: optional local secret override file, loaded automatically if present
-- `.ai-tmp/`: local experiments, evaluation assets, notes, and temporary runners
+- `config.local.example.json`: example local override for secrets
+- `memory/README.md`: notes on adding your own local memory data
 
-## Environment
+This public repo intentionally does not include personal/project memory entries or heavy runtime data.
 
-This project is currently WSL-first.
+## Setup Notes
 
-In practice, you should prefer running the following inside WSL:
+This repo is still WSL-first and assumes a hands-on workflow.
 
-- dependency installation
-- `python` commands
-- `git`
-- compile/index rebuild tasks
-- service startup
-
-Crossing between Windows and WSL is possible, but path, permission, and auth differences can get in the way.
-
-## Quick Start
-
-### 1. Bootstrap inside WSL
+Typical local flow:
 
 ```bash
 ./bootstrap_wsl.sh
 source .venv-wsl/bin/activate
-```
-
-### 2. Configure runtime settings
-
-Keep `config.json` as the public-safe base template.
-
-Then create a local override file for secrets:
-
-```bash
 cp config.local.example.json config.local.json
-```
-
-`config.local.json` is ignored by git and automatically merged on top of `config.json` at runtime.
-
-At minimum, check:
-
-- cloud LLM settings used during compile
-- embedding model settings
-- rerank settings
-
-### 3. Compile memory files
-
-```bash
 python compile.py memory
+python consume.py "your query"
 ```
 
-This writes canonical chunks into SQLite and rebuilds the High-search indexes.
-
-### 4. Query the memory system
-
-```bash
-python consume.py "你的查询"
-```
-
-Or inspect the raw routed payload:
-
-```bash
-python consume.py --json --backend hybrid "你的查询"
-```
-
-### 5. Run the review service
-
-```bash
-./launch_memory_service.sh
-```
-
-## Example Commands
-
-Compile a single file:
-
-```bash
-python compile.py memory/2026-04-23.md
-```
-
-Search with broader recall before rerank:
-
-```bash
-python consume.py --json --backend hybrid --top-k 5 --recall-pool-size 12 "review-pack 的输出结构是什么"
-```
-
-Inspect pending delete review queue:
-
-```bash
-python consume.py --show-pending-delete
-```
-
-## Current Status
-
-This is still a working prototype, not a polished product.
-
-What already exists:
-
-- markdown-to-chunk compile flow
-- canonical chunk storage in SQLite
-- vector + FTS + hybrid retrieval
-- rerank-based High routing
-- evaluation assets and experiment workspace under `.ai-tmp/`
-
-What is still rough:
-
-- configuration and secret management
-- public-facing packaging
-- reproducible setup beyond the current WSL-oriented workflow
-- evaluation tooling cleanup and stronger separation between retrieval eval and routing eval
+`config.local.json` is ignored by git and overlaid on top of `config.json` at runtime.
 
 ## Secret Handling
 
-- Do not put real API keys into tracked `config.json`.
-- Put local secrets in `config.local.json` instead.
-- The loader reads `config.json` first and then overlays `config.local.json` from the same directory if it exists.
+- keep tracked `config.json` public-safe
+- put real local keys in `config.local.json`
+- do not commit runtime data, personal memory content, or private experiment assets
 
-## Evaluation Notes
+## Dependencies
 
-Most experiment assets live under `.ai-tmp/`.
+The included requirements files reflect the prototype state of the project.
 
-Two different evaluation targets exist in this repo:
+- `requirements-wsl.txt` is the lighter starting point
+- `requirements.txt` contains the fuller experiment-oriented dependency set
 
-- first-stage retrieval quality: can the candidate pool pull the right chunk?
-- High admission quality: should the live corpus allow a direct answer at all?
+Some dependencies are tied to the original experimentation environment, so you should expect a bit of manual adjustment.
 
-Those should not be treated as the same problem.
+Practical reading of the dependency split:
 
-## Why This Repo May Be Useful
+- if you only want to inspect the retrieval/routing prototype, start from `requirements-wsl.txt`
+- if you want to reproduce more of the original experiment surface, inspect `requirements.txt`
+- graph and clustering related packages should be treated as prototype-era extras unless you specifically need those paths
 
-If you care about AI coding systems that do more than plain RAG, this repo may be useful as a small, opinionated reference for:
+## Evaluation Caveat
 
-- memory compilation from messy working notes
-- direct-answer-aware reranking
-- separating retrieval success from answer-admission success
-- experimenting with noisy-chunk rejection instead of over-answering
+This project historically used more than one evaluation target.
+
+Keep these separate:
+
+- first-stage retrieval quality: did the candidate pool pull the right chunk?
+- answer admission quality: should the live chunk be allowed to answer directly?
+
+Those are related, but they are not the same metric.
+
+## Maintenance Note
+
+This repository is intentionally slimmed down for public sharing.
+
+What is missing on purpose:
+
+- original personal memory corpus
+- internal experiment workspace
+- runtime indexes and databases
+- previously tracked secrets and historical sensitive content
 
 ## License
 
-No license file has been added yet.
+MIT. See `LICENSE`.

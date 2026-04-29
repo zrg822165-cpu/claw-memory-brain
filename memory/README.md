@@ -4,6 +4,8 @@ This public repository does not ship with personal or project-specific memory en
 
 Add your own markdown files here if you want to compile and index local memory data.
 
+This folder is intentionally empty in the public repo because the original prototype used private working notes.
+
 Suggested format:
 
 - one file per day or topic
